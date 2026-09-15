@@ -213,12 +213,12 @@ export default function SessionPage() {
                               </>
                             )}
                             {isConnected && (
-                                            <div className="pip-overlay">
-                                              <video ref={pipVideoRef} autoPlay muted playsInline className={`size-full object-cover ${cameraOn ? '' : 'opacity-0'}`} />
-                                              {!cameraOn && <div className="absolute inset-0 grid place-items-center text-xs text-[#817666]"><CameraOff className="mb-1 size-5" /> Camera off</div>}
-                                              <span className="absolute bottom-2 left-2 rounded-md bg-black/50 px-2 py-1 text-[10px] text-white/80">You</span>
-                                            </div>
-                                          )}
+                <div className="pip-overlay">
+                  <video ref={pipVideoRef} autoPlay muted playsInline className={`size-full object-cover ${cameraOn ? '' : 'opacity-0'}`} />
+                  {!cameraOn && <div className="absolute inset-0 grid place-items-center text-xs text-[#817666]"><CameraOff className="mb-1 size-5" /> Camera off</div>}
+                  <span className="absolute bottom-2 left-2 rounded-md bg-black/50 px-2 py-1 text-[10px] text-white/80">You</span>
+                </div>
+              )}
               <div className="absolute left-4 top-4 rounded-full border border-white/10 bg-black/25 px-3 py-1.5 text-xs text-white/70 backdrop-blur-md">
                 {isConnected ? 'Guest' : 'Waiting room'}
               </div>
