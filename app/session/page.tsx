@@ -46,6 +46,7 @@ export default function SessionPage() {
     socket.on('connect', () => setStatus('waiting'))
     socket.on('connect_error', () => setStatus('disconnected'))
     socket.on('match-status', async ({ status: nextStatus, initiator }: { status: string; initiator?: boolean }) => {
+      if (nextStatus === 'waiting') { setStatus('waiting'); setRemoteVideoReady(false); return }
       if (nextStatus !== 'matched') return
       setStatus('connected')
       if (initiator) { const offer = await peer.createOffer(); await peer.setLocalDescription(offer); socket.emit('offer', peer.localDescription) }
@@ -72,7 +73,23 @@ export default function SessionPage() {
   const time = () => new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
   function toggleTrack(kind: 'video' | 'audio') { const tracks = streamRef.current?.getTracks().filter((track) => track.kind === kind) ?? []; const enabled = tracks.length ? !tracks[0].enabled : false; tracks.forEach((track) => { track.enabled = enabled }); kind === 'video' ? setCameraOn(enabled) : setMicOn(enabled) }
   function sendMessage(event: FormEvent) { event.preventDefault(); const text = message.trim(); if (!text || !isConnected) return; socketRef.current?.emit('send-message', { text, time: time() }); setMessages((current) => [...current, { from: 'you', text, time: time() }]); setMessage('') }
-  function nextMatch() { if (!socketRef.current) return; setMessages([]); setStatus('waiting'); setRemoteVideoReady(false); if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null; socketRef.current.emit('find_new_match') }
+  function nextMatch() {
+    if (!socketRef.current) return
+    setMessages([])
+    setStatus('waiting')
+    setRemoteVideoReady(false)
+    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = null
+    if (localVideoRef.current) localVideoRef.current.srcObject = null
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop())
+      streamRef.current = null
+    }
+    socketRef.current.emit('find_new_match')
+    // Re-acquire media for new match
+    navigator.mediaDevices?.getUserMedia({ video: true, audio: true }).then((stream) => {
+      attachLocalStream(stream)
+    }).catch(() => { setCameraOn(false) })
+  }
   function leave() { socketRef.current?.emit('leave-session'); window.location.assign('/') }
 
   return <main className="relative flex h-screen max-h-screen flex-col overflow-hidden bg-[#f5efe3] text-[#302b25]">
