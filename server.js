@@ -24,7 +24,7 @@ app.prepare().then(() => {
   })
 
   io.on('connection', (socket) => {
-    socket.on('find-match', () => {
+    function findMatch() {
       removeFromWaiting(socket.id)
       const availableId = waiting.shift()
       const available = availableId && io.sockets.sockets.get(availableId)
@@ -43,44 +43,30 @@ app.prepare().then(() => {
       partners.set(available.id, socket.id)
       socket.emit('match-status', { status: 'matched', roomId, initiator: true })
       available.emit('match-status', { status: 'matched', roomId, initiator: false })
-    })
+    }
 
+    socket.on('find-match', findMatch)
     socket.on('find_new_match', () => {
-      // First leave current session if any
       const partnerId = partners.get(socket.id)
       if (partnerId) {
         partners.delete(socket.id)
         partners.delete(partnerId)
-        for (const [roomId, members] of rooms) if (members.has(socket.id)) rooms.delete(roomId)
         io.to(partnerId).emit('partner-left')
       }
-      removeFromWaiting(socket.id)
-      // Then find new match
-      const availableId = waiting.shift()
-      const available = availableId && io.sockets.sockets.get(availableId)
-
-      if (!available || available.id === socket.id) {
-        waiting.push(socket.id)
-        socket.emit('match-status', { status: 'waiting' })
-        return
-      }
-
-      const roomId = [socket.id, available.id].sort().join(':')
-      socket.join(roomId)
-      available.join(roomId)
-      rooms.set(roomId, new Set([socket.id, available.id]))
-      partners.set(socket.id, available.id)
-      partners.set(available.id, socket.id)
-      socket.emit('match-status', { status: 'matched', roomId, initiator: true })
-      available.emit('match-status', { status: 'matched', roomId, initiator: false })
+      findMatch()
     })
 
-    for (const event of ['offer', 'answer', 'ice-candidate', 'chat-message']) {
+    for (const event of ['offer', 'answer', 'ice-candidate']) {
       socket.on(event, (payload) => {
         const partnerId = partners.get(socket.id)
         if (partnerId) io.to(partnerId).emit(event, payload)
       })
     }
+
+    socket.on('send-message', (payload) => {
+      const partnerId = partners.get(socket.id)
+      if (partnerId) io.to(partnerId).emit('receive-message', payload)
+    })
 
     socket.on('leave-session', () => {
       const partnerId = partners.get(socket.id)
